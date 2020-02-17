@@ -126,6 +126,40 @@ module.exports = function(webpackEnv) {
     return loaders;
   };
 
+  // 多页面配置区
+  function setup() {
+
+    // 存放入口文件
+    const entry = {
+      index: [
+        require.resolve('react-dev-utils/webpackHotDevClient'),
+        paths.appIndexJs
+      ]
+    };
+
+    // 存放 HtmlWebpackPlugin 插件组
+    const plugins = [];
+    Object.keys(paths.dirs).forEach((key) => {
+      entry[key] = [
+        require.resolve('react-dev-utils/webpackHotDevClient'),
+        paths.dirs[key]
+      ]
+  
+      const newPlugins = new HtmlWebpackPlugin({
+        chunks: [key],
+        inject: true,
+        template: paths.appHtml,
+        filename: `${key}/index.html`
+      })
+  
+      plugins.push(newPlugins);
+    })
+
+    return { entry, plugins }
+  }
+  // 这里要注意要运行一次，将配置对象生成 
+  const Setup = setup(); 
+
   return {
     mode: isEnvProduction ? 'production' : isEnvDevelopment && 'development',
     // Stop compilation early in production
@@ -137,25 +171,8 @@ module.exports = function(webpackEnv) {
       : isEnvDevelopment && 'cheap-module-source-map',
     // These are the "entry points" to our application.
     // This means they will be the "root" imports that are included in JS bundle.
-    entry: [
-      // Include an alternative client for WebpackDevServer. A client's job is to
-      // connect to WebpackDevServer by a socket and get notified about changes.
-      // When you save a file, the client will either apply hot updates (in case
-      // of CSS changes), or refresh the page (in case of JS changes). When you
-      // make a syntax error, this client will display a syntax error overlay.
-      // Note: instead of the default WebpackDevServer client, we use a custom one
-      // to bring better experience for Create React App users. You can replace
-      // the line below with these two lines if you prefer the stock client:
-      // require.resolve('webpack-dev-server/client') + '?/',
-      // require.resolve('webpack/hot/dev-server'),
-      isEnvDevelopment &&
-        require.resolve('react-dev-utils/webpackHotDevClient'),
-      // Finally, this is your app's code:
-      paths.appIndexJs,
-      // We include the app code last so that if there is a runtime error during
-      // initialization, it doesn't blow up the WebpackDevServer client, and
-      // changing JS code would still trigger a refresh.
-    ].filter(Boolean),
+    entry: Setup.entry,
+
     output: {
       // The build folder.
       path: isEnvProduction ? paths.appBuild : undefined,
@@ -165,7 +182,7 @@ module.exports = function(webpackEnv) {
       // In development, it does not produce real files.
       filename: isEnvProduction
         ? 'static/js/[name].[contenthash:8].js'
-        : isEnvDevelopment && 'static/js/bundle.js',
+        : isEnvDevelopment && 'static/js/[name].bundle.js',
       // TODO: remove this when upgrading to webpack 5
       futureEmitAssets: true,
       // There are also additional JS chunk files if you use code splitting.
@@ -507,12 +524,15 @@ module.exports = function(webpackEnv) {
     },
     plugins: [
       // Generates an `index.html` file with the <script> injected.
+      // 这里是默认主页输出 HtmlWebpackPlugin 插件
       new HtmlWebpackPlugin(
         Object.assign(
           {},
           {
             inject: true,
             template: paths.appHtml,
+            chunks: ['index'],
+            fileName: 'index.html'
           },
           isEnvProduction
             ? {
@@ -532,6 +552,9 @@ module.exports = function(webpackEnv) {
             : undefined
         )
       ),
+      
+      ...Setup.plugins,
+
       // Inlines the webpack runtime script. This script is too small to warrant
       // a network request.
       // https://github.com/facebook/create-react-app/issues/5358

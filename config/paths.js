@@ -48,6 +48,19 @@ const resolveModule = (resolveFn, filePath) => {
   return resolveFn(`${filePath}.js`);
 };
 
+function Scan() {
+  const dirs = fs.readdirSync(resolveApp('src/'));
+  const map = {};
+  dirs.forEach((file) => {
+    const state = fs.statSync(resolveApp('src/' + file))
+    if (state.isDirectory()) {
+      map[file] = resolveModule(resolveApp,'src/' + file + '/index')
+    }
+  })
+  return map
+}
+const dirs = Scan();
+
 // config after eject: we're in ./config/
 module.exports = {
   dotenv: resolveApp('.env'),
@@ -65,6 +78,7 @@ module.exports = {
   proxySetup: resolveApp('src/setupProxy.js'),
   appNodeModules: resolveApp('node_modules'),
   publicUrlOrPath,
+  dirs
 };
 
 
